@@ -22,9 +22,27 @@ namespace rutacart.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProductos()
         {
-            var productos = await _context.Productos.ToListAsync();
+            // Incluye la categoría al obtener los productos y selecciona los campos que necesitas
+            var productos = await _context.Productos
+                .Include(p => p.Categoria)
+                .Select(p => new
+                {
+                    p.ProductoID,
+                    p.Nombre,
+                    p.Descripcion,
+                    p.Precio,
+                    p.Peso,
+                    p.Volumen,
+                    p.Stock,
+                    p.CategoriaID,
+                    CategoriaNombre = p.Categoria.Nombre, // Incluye el nombre de la categoría
+                    p.ImagenURL
+                })
+                .ToListAsync();
+
             return Ok(productos);
         }
+
 
         // GET: api/Productos/5
         [HttpGet("{id}")]
@@ -40,14 +58,53 @@ namespace rutacart.Controllers
             return Ok(producto);
         }
 
+        public class ProductoCreacionDto
+        {
+            public string Nombre { get; set; }
+            public string Descripcion { get; set; }
+            public decimal Precio { get; set; }
+            public decimal Peso { get; set; }
+            public decimal Volumen { get; set; }
+            public int Stock { get; set; }
+            public int CategoriaID { get; set; }
+            public string ImagenURL { get; set; }
+        }
+
+        public class ProductoEdicionDto
+        {
+            public int ProductoID { get; set; } // Asumiendo que quieres incluirlo en el cuerpo
+            public string Nombre { get; set; }
+            public string Descripcion { get; set; }
+            public decimal Precio { get; set; }
+            public decimal Peso { get; set; }
+            public decimal Volumen { get; set; }
+            public int Stock { get; set; }
+            public int CategoriaID { get; set; }
+            public string ImagenURL { get; set; }
+        }
+
+
         // POST: api/Productos
         [HttpPost]
-        public async Task<IActionResult> CreateProducto([FromBody] Producto producto)
+        public async Task<IActionResult> CreateProducto([FromBody] ProductoCreacionDto productoDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
+            var producto = new Producto
+            {
+                Nombre = productoDto.Nombre,
+                Descripcion = productoDto.Descripcion,
+                Precio = productoDto.Precio,
+                Peso = productoDto.Peso,
+                Volumen = productoDto.Volumen,
+                Stock = productoDto.Stock,
+                CategoriaID = productoDto.CategoriaID,
+                ImagenURL = productoDto.ImagenURL
+                // No asignas directamente Categoria ni ItemsCarrito aquí
+            };
 
             _context.Productos.Add(producto);
             await _context.SaveChangesAsync();
@@ -55,14 +112,32 @@ namespace rutacart.Controllers
             return CreatedAtAction("GetProducto", new { id = producto.ProductoID }, producto);
         }
 
+
+        // PUT: api/Productos/5
         // PUT: api/Productos/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProducto(int id, [FromBody] Producto producto)
+        public async Task<IActionResult> UpdateProducto(int id, [FromBody] ProductoEdicionDto productoDto)
         {
-            if (id != producto.ProductoID)
+            if (id != productoDto.ProductoID)
             {
-                return BadRequest();
+                return BadRequest("El ID del producto no coincide.");
             }
+
+            var producto = await _context.Productos.FindAsync(id);
+            if (producto == null)
+            {
+                return NotFound();
+            }
+
+            // Actualiza las propiedades del producto existente con los valores del DTO
+            producto.Nombre = productoDto.Nombre;
+            producto.Descripcion = productoDto.Descripcion;
+            producto.Precio = productoDto.Precio;
+            producto.Peso = productoDto.Peso;
+            producto.Volumen = productoDto.Volumen;
+            producto.Stock = productoDto.Stock;
+            producto.CategoriaID = productoDto.CategoriaID;
+            producto.ImagenURL = productoDto.ImagenURL;
 
             _context.Entry(producto).State = EntityState.Modified;
 
@@ -84,6 +159,7 @@ namespace rutacart.Controllers
 
             return NoContent();
         }
+
 
         // DELETE: api/Productos/5
         [HttpDelete("{id}")]
