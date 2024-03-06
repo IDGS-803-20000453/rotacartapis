@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using rutacart.Data;
 using rutacart.Models;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Data.SqlClient;
 
 namespace rutacart.Controllers
 {
@@ -130,6 +132,38 @@ namespace rutacart.Controllers
             return NoContent();
         }
 
+        // POST: api/Pedidos/Crear
+        [HttpPost("Crear")]
+        public IActionResult CrearPedidoYEnvio([FromBody] CrearPedidoYEnvioDto pedidoDto)
+        {
+            string connectionString = _context.Database.GetDbConnection().ConnectionString;
+
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                using (var cmd = new SqlCommand("CrearPedidoYEnvio", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    // Definir los parámetros de entrada
+                    cmd.Parameters.Add(new SqlParameter("@UsuarioID", pedidoDto.UsuarioID));
+                    cmd.Parameters.Add(new SqlParameter("@DireccionEnvio", pedidoDto.DireccionEnvio));
+                    cmd.Parameters.Add(new SqlParameter("@PesoTotal", pedidoDto.PesoTotal));
+                    cmd.Parameters.Add(new SqlParameter("@VolumenTotal", pedidoDto.VolumenTotal));
+
+                    // Ejecutar el procedimiento almacenado
+                    cmd.ExecuteNonQuery();
+
+                    // Retornar el resultado. Ajusta según necesites retornar algún valor específico
+                    return Ok();
+                }
+            }
+        }
+
+
+
+
+
         // PUT: api/Pedidos/Finalizar/5
         [HttpPut("Finalizar/{id}")]
         public async Task<IActionResult> FinalizarPedido(int id)
@@ -150,9 +184,21 @@ namespace rutacart.Controllers
             return NoContent(); // O podrías devolver un status más específico si es necesario.
         }
 
+
+
+
         private bool PedidoExists(int id)
         {
             return _context.Pedidos.Any(e => e.PedidoID == id);
         }
     }
+
+    public class CrearPedidoYEnvioDto
+    {
+        public int UsuarioID { get; set; }
+        public string DireccionEnvio { get; set; }
+        public decimal PesoTotal { get; set; }
+        public decimal VolumenTotal { get; set; }
+    }
+
 }

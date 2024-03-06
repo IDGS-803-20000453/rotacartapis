@@ -124,6 +124,8 @@ namespace rutacart.Controllers
             public string ImagenURL { get; set; }
             public int Cantidad { get; set; }
             public decimal Precio { get; set; }
+            public decimal Peso { get; set; }
+            public decimal Volumen { get; set; }
             public int CarritoID { get; set; }
             public int UsuarioID { get; set; }
         }
@@ -135,7 +137,7 @@ namespace rutacart.Controllers
             using (var conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-                var query = @"SELECT ItemCarritoID,ProductoID, Nombre, ImagenURL, Cantidad, Precio, CarritoID, UsuarioID 
+                var query = @"SELECT ItemCarritoID,ProductoID, Nombre, ImagenURL, Cantidad, Precio, Peso, Volumen, CarritoID, UsuarioID 
                       FROM VistaDetalleCarrito 
                       WHERE UsuarioID = @UsuarioID";
                 using (var cmd = new SqlCommand(query, conn))
@@ -153,6 +155,8 @@ namespace rutacart.Controllers
                                 ImagenURL = reader.GetString(reader.GetOrdinal("ImagenURL")),
                                 Cantidad = reader.GetInt32(reader.GetOrdinal("Cantidad")),
                                 Precio = reader.GetDecimal(reader.GetOrdinal("Precio")),
+                                Peso = reader.GetDecimal(reader.GetOrdinal("Peso")),
+                                Volumen = reader.GetDecimal(reader.GetOrdinal("Volumen")),
                                 CarritoID = reader.GetInt32(reader.GetOrdinal("CarritoID")),
                                 UsuarioID = reader.GetInt32(reader.GetOrdinal("UsuarioID"))
                             });
