@@ -16,7 +16,7 @@ namespace rutacart.Data
         public DbSet<Carrito> Carritos { get; set; }
         public DbSet<ItemCarrito> ItemCarrito { get; set; }
         public DbSet<DetallePedido> DetallesPedido { get; set; }
-        public DbSet<Envio> Envio { get; set; }
+        public DbSet<Envio> Envios { get; set; }
         public DbSet<Pedido> Pedidos { get; set; }
         public DbSet<Proveedor> Proveedores { get; set; }
 

@@ -80,18 +80,24 @@ namespace rutacart.Controllers
 
         // PUT: api/Proveedores/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProveedor(int id, Proveedor proveedor)
+        public async Task<IActionResult> PutProveedor(int id, [FromBody] ProveedorDto proveedorDto)
         {
-            if (id != proveedor.ProveedorID)
+            var proveedor = await _context.Proveedores.FindAsync(id);
+            if (proveedor == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            _context.Entry(proveedor).State = EntityState.Modified;
+            proveedor.Nombre = proveedorDto.Nombre;
+            proveedor.Direccion = proveedorDto.Direccion;
+            proveedor.Telefono = proveedorDto.Telefono;
+            proveedor.Email = proveedorDto.Email;
+            // No modificamos la colección Envios
 
             try
             {
                 await _context.SaveChangesAsync();
+                return NoContent();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -104,9 +110,8 @@ namespace rutacart.Controllers
                     throw;
                 }
             }
-
-            return NoContent();
         }
+
 
         // DELETE: api/Proveedores/5
         [HttpDelete("{id}")]

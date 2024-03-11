@@ -21,32 +21,65 @@ namespace rutacart.Controllers
             _context = context;
         }
 
+
+
+
         // GET: api/Pedidos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Pedido>>> GetPedidos()
+        public async Task<ActionResult<IEnumerable<PedidosDto>>> GetPedidos(int? usuarioId = null)
         {
-            return await _context.Pedidos
-                                 .Include(p => p.Usuarios)
-                                 .Include(p => p.DetallesPedido)
-                                 .ToListAsync();
-        }
-
-        // GET: api/Pedidos/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Pedido>> GetPedido(int id)
-        {
-            var pedido = await _context.Pedidos
-                                       .Include(p => p.Usuarios)
-                                       .Include(p => p.DetallesPedido)
-                                       .FirstOrDefaultAsync(p => p.PedidoID == id);
-
-            if (pedido == null)
+            try
             {
-                return NotFound();
-            }
+                var query = _context.Pedidos.AsQueryable();
 
-            return pedido;
+                if (usuarioId.HasValue)
+                {
+                    var usuario = await _context.Usuarios.FindAsync(usuarioId.Value);
+                    if (usuario == null)
+                    {
+                        return NotFound(new { message = $"No se encontró el usuario con ID {usuarioId.Value}." });
+                    }
+
+                    query = query.Where(p => p.UsuarioID == usuarioId.Value);
+                }
+
+                var pedidosList = await query
+                    .Select(p => new PedidosDto
+                    {
+                        PedidoID = p.PedidoID,
+                        UsuarioID = p.UsuarioID , // Asegúrate de manejar los nulos aquí según tu lógica de negocio.
+                        FechaPedido = p.FechaPedido,
+                        Estado = p.Estado,
+                        Total = p.Total,
+                        DireccionEnvio = p.DireccionEnvio,
+                        PesoTotal = p.PesoTotal,
+                        VolumenTotal = p.VolumenTotal,
+                        FechaEntrega = p.FechaEntrega
+                    })
+                    .ToListAsync();
+
+                return pedidosList;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while processing your request.", details = ex.Message });
+            }
         }
+
+        public class PedidosDto
+        {
+            public int PedidoID { get; set; }
+            public int? UsuarioID { get; set; }
+            public DateTime? FechaPedido { get; set; }
+            public string? Estado { get; set; }
+            public decimal? Total { get; set; }
+            public string? DireccionEnvio { get; set; }
+            public decimal? PesoTotal { get; set; }
+            public decimal? VolumenTotal { get; set; }
+            public DateTime? FechaEntrega { get; set; }
+        }
+
+        
 
         // POST: api/Pedidos
         [HttpPost]
@@ -159,6 +192,37 @@ namespace rutacart.Controllers
                 }
             }
         }
+
+        // PATCH: api/Pedidos/ActualizarEstado/5
+        [HttpPatch("ActualizarEstado/{id}")]
+        public async Task<IActionResult> ActualizarEstadoPedido(int id, [FromBody] ActualizarEstadoDto estadoDto)
+        {
+            var pedido = await _context.Pedidos.FindAsync(id);
+            if (pedido == null)
+            {
+                return NotFound();
+            }
+
+            // Asegúrate de que solo se actualice el estado si el pedido está en estado "Pendiente"
+            if (pedido.Estado == "Pendiente")
+            {
+                pedido.Estado = estadoDto.Estado; // Actualiza el estado a "Enviado" o cualquier otro estado proporcionado
+                _context.Pedidos.Update(pedido);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
+            }
+            else
+            {
+                return BadRequest(new { message = "El pedido no está en estado 'Pendiente' y no puede ser actualizado." });
+            }
+        }
+
+        public class ActualizarEstadoDto
+        {
+            public string Estado { get; set; }
+        }
+
 
 
 
