@@ -7,6 +7,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
+using System.Data.Common;
 
 namespace rutacart.Controllers
 {
@@ -248,6 +249,105 @@ namespace rutacart.Controllers
             return NoContent(); // O podrías devolver un status más específico si es necesario.
         }
 
+        // GET: api/Pedidos/PedidoEnvio/Todos
+        [HttpGet("PedidoEnvio/Todos")]
+        public async Task<ActionResult<IEnumerable<PedidoEnvioDto>>> GetTodosPedidosEnvios()
+        {
+            return await ObtenerPedidosEnvios(null);
+        }
+        // GET: api/Pedidos/PedidoEnvio/PorUsuario/{usuarioId}
+        [HttpGet("PedidoEnvio/PorUsuario/{usuarioId}")]
+        public async Task<ActionResult<IEnumerable<PedidoEnvioDto>>> GetPedidosEnviosPorUsuario(int usuarioId)
+        {
+            return await ObtenerPedidosEnvios(usuarioId);
+        }
+        private async Task<ActionResult<IEnumerable<PedidoEnvioDto>>> ObtenerPedidosEnvios(int? usuarioId)
+        {
+            var pedidoEnvioList = new List<PedidoEnvioDto>();
+            var connection = _context.Database.GetDbConnection();
+
+            try
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    string sqlQuery = usuarioId.HasValue
+                        ? "SELECT * FROM VistaClientePedidosEnvios WHERE UsuarioID = @UsuarioID"
+                        : "SELECT * FROM VistaClientePedidosEnvios";
+                    command.CommandText = sqlQuery;
+
+                    if (usuarioId.HasValue)
+                    {
+                        var parameter = command.CreateParameter();
+                        parameter.ParameterName = "@UsuarioID";
+                        parameter.Value = usuarioId.Value;
+                        command.Parameters.Add(parameter);
+                    }
+
+                    using (var result = await command.ExecuteReaderAsync())
+                    {
+                        while (await result.ReadAsync())
+                        {
+                            pedidoEnvioList.Add(MapearPedidoEnvioDto(result));
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            if (pedidoEnvioList.Count == 0)
+            {
+                return NotFound(new { message = "No se encontraron pedidos." });
+            }
+
+            return pedidoEnvioList;
+        }
+
+
+        private PedidoEnvioDto MapearPedidoEnvioDto(DbDataReader result)
+        {
+            return new PedidoEnvioDto
+            {
+                PedidoID = result.GetInt32(result.GetOrdinal("PedidoID")),
+                UsuarioID = result.IsDBNull(result.GetOrdinal("UsuarioID")) ? null : result.GetInt32(result.GetOrdinal("UsuarioID")),
+                FechaPedido = result.IsDBNull(result.GetOrdinal("FechaPedido")) ? null : result.GetDateTime(result.GetOrdinal("FechaPedido")),
+                EstadoPedido = result.IsDBNull(result.GetOrdinal("EstadoPedido")) ? null : result.GetString(result.GetOrdinal("EstadoPedido")),
+                Total = result.IsDBNull(result.GetOrdinal("Total")) ? null : result.GetDecimal(result.GetOrdinal("Total")),
+                DireccionEnvio = result.IsDBNull(result.GetOrdinal("DireccionEnvio")) ? null : result.GetString(result.GetOrdinal("DireccionEnvio")),
+                EnvioID = result.IsDBNull(result.GetOrdinal("EnvioID")) ? null : result.GetInt32(result.GetOrdinal("EnvioID")),
+                EstadoEnvio = result.IsDBNull(result.GetOrdinal("EstadoEnvio")) ? null : result.GetString(result.GetOrdinal("EstadoEnvio")),
+                FechaEntregaEstimada = result.IsDBNull(result.GetOrdinal("FechaEntregaEstimada")) ? null : result.GetDateTime(result.GetOrdinal("FechaEntregaEstimada")),
+                Nombre = result.IsDBNull(result.GetOrdinal("Nombre")) ? null : result.GetString(result.GetOrdinal("Nombre")),
+                ImagenURL = result.IsDBNull(result.GetOrdinal("ImagenURL")) ? null : result.GetString(result.GetOrdinal("ImagenURL")),
+                Cantidad = result.IsDBNull(result.GetOrdinal("Cantidad")) ? null : result.GetInt32(result.GetOrdinal("Cantidad")),
+                Precio = result.IsDBNull(result.GetOrdinal("Precio")) ? null : result.GetDecimal(result.GetOrdinal("Precio"))
+            };
+        }
+
+
+        public class PedidoEnvioDto
+        {
+            public int? PedidoID { get; set; }
+            public int? UsuarioID { get; set; }
+            public DateTime? FechaPedido { get; set; }
+            public string? EstadoPedido { get; set; }
+            public decimal? Total { get; set; }
+            public string? DireccionEnvio { get; set; }
+            public int? EnvioID { get; set; }
+            public string? EstadoEnvio { get; set; }
+            public DateTime? FechaEntregaEstimada { get; set; }
+            public string? Nombre { get; set; }
+            public string? ImagenURL { get; set; }
+            public int? Cantidad { get; set; }
+            public decimal? Precio { get; set; }
+        }
+
+
+
+
 
 
 
@@ -264,5 +364,7 @@ namespace rutacart.Controllers
         public decimal PesoTotal { get; set; }
         public decimal VolumenTotal { get; set; }
     }
+    
+
 
 }

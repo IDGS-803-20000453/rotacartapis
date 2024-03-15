@@ -72,7 +72,6 @@ namespace rutacart.Controllers
 
         public class ProductoEdicionDto
         {
-            public int ProductoID { get; set; } // Asumiendo que quieres incluirlo en el cuerpo
             public string Nombre { get; set; }
             public string Descripcion { get; set; }
             public decimal Precio { get; set; }
@@ -82,6 +81,7 @@ namespace rutacart.Controllers
             public int CategoriaID { get; set; }
             public string ImagenURL { get; set; }
         }
+
 
 
         // POST: api/Productos
@@ -118,18 +118,12 @@ namespace rutacart.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProducto(int id, [FromBody] ProductoEdicionDto productoDto)
         {
-            if (id != productoDto.ProductoID)
-            {
-                return BadRequest("El ID del producto no coincide.");
-            }
-
             var producto = await _context.Productos.FindAsync(id);
             if (producto == null)
             {
-                return NotFound();
+                return NotFound("Producto no encontrado.");
             }
 
-            // Actualiza las propiedades del producto existente con los valores del DTO
             producto.Nombre = productoDto.Nombre;
             producto.Descripcion = productoDto.Descripcion;
             producto.Precio = productoDto.Precio;
@@ -137,28 +131,34 @@ namespace rutacart.Controllers
             producto.Volumen = productoDto.Volumen;
             producto.Stock = productoDto.Stock;
             producto.CategoriaID = productoDto.CategoriaID;
-            producto.ImagenURL = productoDto.ImagenURL;
+
+            // Actualiza ImagenURL solo si se proporciona una nueva
+            if (productoDto.ImagenURL != null)
+            {
+                producto.ImagenURL = productoDto.ImagenURL;
+            }
 
             _context.Entry(producto).State = EntityState.Modified;
 
             try
             {
                 await _context.SaveChangesAsync();
+                return NoContent();
             }
             catch (DbUpdateConcurrencyException)
             {
                 if (!ProductoExists(id))
                 {
-                    return NotFound();
+                    return NotFound("Producto no encontrado para actualizar.");
                 }
                 else
                 {
                     throw;
                 }
             }
-
-            return NoContent();
         }
+
+
 
 
         // DELETE: api/Productos/5

@@ -68,14 +68,26 @@ namespace rutacart.Controllers
             return CreatedAtAction("GetCategoria", new { id = categoria.CategoriaID }, categoria);
         }
 
+        public class CategoriaEdicionDto
+        {
+            public string Nombre { get; set; }
+            public string Descripcion { get; set; }
+        }
+
+
         // PUT: api/Categorias/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
+        public async Task<IActionResult> PutCategoria(int id, [FromBody] CategoriaEdicionDto categoriaDto)
         {
-            if (id != categoria.CategoriaID)
+            var categoria = await _context.Categorias.FindAsync(id);
+            if (categoria == null)
             {
-                return BadRequest();
+                return NotFound();
             }
+
+            // Actualiza los campos de la categoría existente con los valores del DTO
+            categoria.Nombre = categoriaDto.Nombre;
+            categoria.Descripcion = categoriaDto.Descripcion;
 
             _context.Entry(categoria).State = EntityState.Modified;
 
@@ -97,6 +109,7 @@ namespace rutacart.Controllers
 
             return NoContent();
         }
+
 
         // DELETE: api/Categorias/5
         [HttpDelete("{id}")]
