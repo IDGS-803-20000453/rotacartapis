@@ -27,17 +27,21 @@ namespace rutacart.Controllers
                     return NotFound();
                 }
 
-                if (!string.IsNullOrEmpty(estadoDto.Estado))
+                envio.Estado = estadoDto.Estado;
+                if (estadoDto.CostoEnvio.HasValue) // Asegúrate de que el costo de envío se proporciona antes de actualizar
                 {
-                    envio.Estado = estadoDto.Estado;
-                    _context.Envios.Update(envio);
-                    await _context.SaveChangesAsync();
-                    return NoContent();
+                    envio.CostoEnvio = estadoDto.CostoEnvio.Value;
                 }
-                else
+                _context.Envios.Update(envio);
+                await _context.SaveChangesAsync();
+
+                if (envio.Estado == "Pendiente")
                 {
-                    return BadRequest(new { message = "El estado no puede ser nulo o vacío." });
+                    // Devuelve un código especial, por ejemplo, 202 (Accepted) con un mensaje personalizado
+                    return StatusCode(202, new { message = "El estado del envío ha sido actualizado a 'Pendiente'." });
                 }
+
+                return NoContent(); // Si no es "Pendiente", simplemente confirma que la actualización fue exitosa
             }
             catch (Exception ex)
             {
@@ -46,11 +50,10 @@ namespace rutacart.Controllers
             }
         }
 
-
-        // Definición de ActualizarEstadoEnvioDto dentro del controlador
         public class ActualizarEstadoEnvioDto
         {
             public string Estado { get; set; }
+            public decimal? CostoEnvio { get; set; } // Agrega el costo de envío como un campo opcional
         }
 
         public class EnvioDto
@@ -89,6 +92,8 @@ namespace rutacart.Controllers
 
             return enviosList;
         }
+
+
 
     }
 }
