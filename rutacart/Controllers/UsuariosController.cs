@@ -26,9 +26,12 @@ namespace rutacart.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public UsuariosController(ApplicationDbContext context)
+        private readonly ILogger<UsuariosController> _logger;
+
+        public UsuariosController(ApplicationDbContext context, ILogger<UsuariosController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
 
@@ -36,6 +39,8 @@ namespace rutacart.Controllers
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
+            _logger.LogInformation("Inicio del método ResetPassword para el email: {Email}", request.Email);
+
             if (request == null || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.NewPassword))
             {
                 return BadRequest("La solicitud no puede ser procesada debido a parámetros inválidos.");
@@ -68,6 +73,8 @@ namespace rutacart.Controllers
         [HttpPost("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
         {
+            _logger.LogInformation("Inicio del método ForgotPassword para el email: {Email}", model.Email);
+
             try
             {
                 var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == model.Email);
@@ -94,6 +101,7 @@ namespace rutacart.Controllers
                 var emailBody = $"<p>Por favor, usa este <a href='{resetLink}'>enlace</a> para restablecer tu contraseña. Este enlace será válido por 15 minutos.</p>";
                 await SendEmailAsync(user.Email, "Restablecimiento de Contraseña", emailBody);
 
+                _logger.LogInformation("Correo de restablecimiento enviado a: {Email}", model.Email);
 
                 return Ok(new { message = "Si tu correo electrónico existe en nuestra base de datos, recibirás un enlace para restablecer tu contraseña." });
             }
@@ -101,6 +109,8 @@ namespace rutacart.Controllers
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error enviando correo de restablecimiento a: {Email}", model.Email);
+
                 return StatusCode(500, "Ocurrió un error al procesar tu solicitud. Por favor, inténtalo de nuevo más tarde.");
             }
         }
@@ -132,6 +142,8 @@ namespace rutacart.Controllers
         [HttpPost("SignUp")]
         public async Task<ActionResult> SignUp([FromBody] UserRegistrationDto registrationDto)
         {
+            _logger.LogInformation("Inicio del método SignUp para el email: {Email}", registrationDto.Email);
+
             if (await UserExists(registrationDto.Email))
             {
                 return BadRequest("El correo electrónico ya está en uso.");
@@ -157,16 +169,24 @@ namespace rutacart.Controllers
             return StatusCode(201); // Created
         }
 
-        // POST: api/Usuarios/Login
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto loginDto)
         {
+            _logger.LogInformation("Inicio del método Login");
+
             var usuario = await _context.Usuarios
                 .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
-            if (usuario == null || !VerifyPasswordHash(loginDto.Password, usuario.HashContrasena, usuario.SaltContrasena))
+            if (usuario == null)
             {
+                _logger.LogWarning("Usuario no encontrado: {Email}", loginDto.Email);
+                return Unauthorized(new { message = "Las credenciales son incorrectas." });
+            }
+
+            if (!VerifyPasswordHash(loginDto.Password, usuario.HashContrasena, usuario.SaltContrasena))
+            {
+                _logger.LogWarning("Falló la verificación de contraseña para el usuario: {Email}", loginDto.Email);
                 return Unauthorized(new { message = "Las credenciales son incorrectas." });
             }
 
@@ -174,6 +194,7 @@ namespace rutacart.Controllers
             await _context.SaveChangesAsync();
 
             var token = GenerateJwtToken(usuario); // Genera el token
+            _logger.LogInformation("Login exitoso para el usuario: {Email}", usuario.Email);
 
             return Ok(new
             {
@@ -186,6 +207,7 @@ namespace rutacart.Controllers
                 token // Envía el token como parte de la respuesta
             });
         }
+
 
         private string GenerateJwtToken(Usuarios usuario)
         {
@@ -247,65 +269,75 @@ namespace rutacart.Controllers
         [HttpPost("StartVerification")]
         public async Task<IActionResult> StartVerification([FromBody] UserRegistrationDto registrationDto)
         {
-            Usuarios userToVerify = null; // Variable para mantener el usuario actual o nuevo.
+            _logger.LogInformation("Iniciando verificación de usuario con email: {Email}", registrationDto?.Email);
 
-            var user = await _context.Usuarios
-                                     .FirstOrDefaultAsync(u => u.Email == registrationDto.Email);
-
-            // Si el usuario ya existe y no está verificado o el token ha expirado, permite reenviar el correo
-            if (user != null && (user.EmailVerificationToken != null || (user.EmailVerificationTokenExpiration.HasValue && user.EmailVerificationTokenExpiration.Value.AddDays(1) < DateTime.UtcNow)))
+            try
             {
-                // Actualiza el token y la fecha de expiración para un nuevo intento
-                user.EmailVerificationToken = Guid.NewGuid().ToString();
-                user.EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24);
-                await _context.SaveChangesAsync();
-                userToVerify = user; // Asigna el usuario existente a la variable.
-            }
-            else if (user == null)
-            {
-                // Crea un nuevo usuario con un token de verificación
-                CreatePasswordHash(registrationDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
+                Usuarios userToVerify = null;
 
-                var newUser = new Usuarios
+                var user = await _context.Usuarios
+                                         .FirstOrDefaultAsync(u => u.Email == registrationDto.Email);
+
+                if (user != null && (user.EmailVerificationToken != null || (user.EmailVerificationTokenExpiration.HasValue && user.EmailVerificationTokenExpiration.Value.AddDays(1) < DateTime.UtcNow)))
                 {
-                    Nombre = registrationDto.Nombre,
-                    Apellido = registrationDto.Apellido,
-                    Email = registrationDto.Email,
-                    HashContrasena = Convert.ToBase64String(passwordHash),
-                    SaltContrasena = Convert.ToBase64String(passwordSalt),
-                    EmailVerificationToken = Guid.NewGuid().ToString(),
-                    EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24),
-                    FechaCreacion = DateTime.UtcNow,
-                    UltimoAcceso = DateTime.UtcNow,
-                    RolId = 2 // Rol de usuario por defecto
-                };
+                    user.EmailVerificationToken = Guid.NewGuid().ToString();
+                    user.EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24);
+                    userToVerify = user;
+                    _context.Usuarios.Update(user); // Asegúrate de marcar el usuario como actualizado si modificas cualquier propiedad.
+                }
+                else if (user == null)
+                {
+                    CreatePasswordHash(registrationDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-                _context.Usuarios.Add(newUser);
+                    var newUser = new Usuarios
+                    {
+                        Nombre = registrationDto.Nombre,
+                        Apellido = registrationDto.Apellido,
+                        Email = registrationDto.Email,
+                        HashContrasena = Convert.ToBase64String(passwordHash),
+                        SaltContrasena = Convert.ToBase64String(passwordSalt),
+                        EmailVerificationToken = Guid.NewGuid().ToString(),
+                        EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24),
+                        FechaCreacion = DateTime.UtcNow,
+                        UltimoAcceso = DateTime.UtcNow,
+                        RolId = 2 // Asegúrate de que este valor corresponde a un Rol válido en tu base de datos.
+                    };
+                    _logger.LogInformation("Creando nuevo usuario para la verificación.");
+
+                    _context.Usuarios.Add(newUser);
+                    userToVerify = newUser;
+                }
+                else
+                {
+                    _logger.LogWarning("El correo electrónico ya está en uso y verificado.");
+                    return BadRequest("El correo electrónico ya está en uso y verificado.");
+                }
+
+                // Aquí es donde realmente guardas los cambios en la base de datos.
                 await _context.SaveChangesAsync();
-                userToVerify = newUser; // Asigna el nuevo usuario a la variable.
+
+                if (userToVerify == null)
+                {
+                    _logger.LogError("Error inesperado: el objeto userToVerify es nulo");
+                    return BadRequest("Error inesperado al procesar la verificación.");
+                }
+
+                var verificationToken = userToVerify.EmailVerificationToken;
+                var emailTo = userToVerify.Email;
+                var verificationLink = $"http://localhost:4200/complete-verification?token={verificationToken}&email={HttpUtility.UrlEncode(emailTo)}";
+                var emailBody = $"<p>Por favor, confirma tu correo electrónico haciendo clic en este <a href='{verificationLink}'>enlace</a>. Este enlace será válido por 24 horas.</p>";
+
+                await SendEmailAsync(emailTo, "Verificación de Correo Electrónico", emailBody);
+
+                return Ok(new { message = "Se ha enviado un correo electrónico de verificación. Por favor, revisa tu bandeja de entrada." });
             }
-            else
+            catch (Exception ex)
             {
-                // Usuario ya verificado y activo
-                return BadRequest("El correo electrónico ya está en uso y verificado.");
+                _logger.LogError(ex, "Excepción al intentar iniciar la verificación de usuario: {Message}", ex.Message);
+                return StatusCode(500, "Ocurrió un error al procesar tu solicitud. Por favor, inténtalo de nuevo más tarde.");
             }
-
-            // Asegurarse de que userToVerify no es nulo antes de continuar
-            if (userToVerify == null)
-            {
-                return BadRequest("Error inesperado al procesar la verificación.");
-            }
-
-            // Enviar correo de verificación
-            var verificationToken = userToVerify.EmailVerificationToken;
-            var emailTo = userToVerify.Email;
-            var verificationLink = $"http://localhost:4200/complete-verification?token={verificationToken}&email={HttpUtility.UrlEncode(emailTo)}";
-            var emailBody = $"<p>Por favor, confirma tu correo electrónico haciendo clic en este <a href='{verificationLink}'>enlace</a>. Este enlace será válido por 24 horas.</p>";
-
-            await SendEmailAsync(emailTo, "Verificación de Correo Electrónico", emailBody);
-
-            return Ok(new { message = "Se ha enviado un correo electrónico de verificación. Por favor, revisa tu bandeja de entrada." });
         }
+
 
         public class RegistrationCompletionRequest
         {
@@ -316,6 +348,8 @@ namespace rutacart.Controllers
         [HttpPost("CompleteRegistration")]
         public async Task<IActionResult> CompleteRegistration([FromBody] RegistrationCompletionRequest request)
         {
+            _logger.LogInformation("Inicio del método CompleteRegistration para el email: {Email}", request.Email);
+
             if (request == null || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email))
             {
                 return BadRequest("La solicitud no es válida.");

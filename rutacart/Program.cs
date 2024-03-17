@@ -8,13 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: "AllowAll",
+    options.AddPolicy(name: "AllowSpecificOrigin",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:4200")
                   .AllowAnyMethod()
                   .AllowAnyHeader();
         });
@@ -37,11 +36,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll"); 
+app.UseRouting(); // Asegúrate de llamar a UseRouting antes de aplicar las políticas CORS.
+
+app.UseCors("AllowSpecificOrigin"); // Asegúrate de que este nombre coincida con el nombre de la política definida.
 
 app.UseAuthorization();
+builder.Logging.AddConsole();
+
 
 app.MapControllers();
-
 
 app.Run();
