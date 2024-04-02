@@ -38,7 +38,10 @@ public class Usuarios
     // atributos para el restablecimiento de contraseña
     public string? ResetPasswordToken { get; set; } // Token de restablecimiento de contraseña
     public DateTime? ResetPasswordTokenExpiration { get; set; } // Fecha de expiración del token (nullable)
+    //campo de imagenUrl
+    public string? ImagenURL { get; set; }
     // campos para la verificación de correo electrónico
+
     public string? EmailVerificationToken { get; set; } // Token de verificación de correo
     public DateTime? EmailVerificationTokenExpiration { get; set; } // Fecha de expiración del token de verificación de correo
 }

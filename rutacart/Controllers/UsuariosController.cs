@@ -372,5 +372,47 @@ namespace rutacart.Controllers
         }
 
 
+
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UserUpdateDto userUpdateDto)
+        {
+            if (userUpdateDto == null)
+            {
+                return BadRequest("Datos de actualización inválidos.");
+            }
+
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null)
+            {
+                return NotFound($"Usuario con ID {id} no encontrado.");
+            }
+
+
+            usuario.Nombre = userUpdateDto.Nombre ?? usuario.Nombre;
+            usuario.Apellido = userUpdateDto.Apellido ?? usuario.Apellido;
+            usuario.ImagenURL = userUpdateDto.ImagenURL ?? usuario.ImagenURL;
+           
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return NoContent(); // O podrías retornar un Ok si prefieres enviar una respuesta al cliente
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Manejar la excepción si ocurre un problema al guardar los cambios
+                _logger.LogError(ex, "Ocurrió un error al actualizar el usuario con ID {UserID}.", id);
+                return StatusCode(500, "No se pudo actualizar la información del usuario debido a un error interno.");
+            }
+        }
+
+        public class UserUpdateDto
+        {
+            public string Nombre { get; set; }
+            public string Apellido { get; set; }
+            public string ImagenURL { get; set; }
+        }
+
+
     }
 }
