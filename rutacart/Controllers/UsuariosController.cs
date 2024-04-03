@@ -203,6 +203,7 @@ namespace rutacart.Controllers
                 email = usuario.Email,
                 nombre = usuario.Nombre,
                 rolId = usuario.RolId,
+                imagenURL = usuario.ImagenURL,
                 nombreRol = usuario.Roles.NombreRol,
                 token // Envía el token como parte de la respuesta
             });
@@ -413,6 +414,32 @@ namespace rutacart.Controllers
             public string ImagenURL { get; set; }
         }
 
+        // GET: api/Usuarios
+        [HttpGet]
+        public async Task<IActionResult> GetAllUsuarios()
+        {
+            var usuarios = await _context.Usuarios
+                                         .AsNoTracking()
+                                         .ToListAsync();
+
+            return Ok(usuarios);
+        }
+
+        // GET: api/Usuarios/{id}
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetUsuarioById([FromRoute] int id)
+        {
+            var usuario = await _context.Usuarios
+                                        .AsNoTracking()
+                                        .FirstOrDefaultAsync(u => u.UsuarioID == id);
+
+            if (usuario == null)
+            {
+                return NotFound($"Usuario con ID {id} no encontrado.");
+            }
+
+            return Ok(usuario);
+        }
 
     }
 }
