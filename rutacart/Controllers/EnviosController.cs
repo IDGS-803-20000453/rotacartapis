@@ -28,38 +28,39 @@ namespace rutacart.Controllers
                 }
 
                 envio.Estado = estadoDto.Estado;
-                if (estadoDto.CostoEnvio.HasValue) // Asegúrate de que el costo de envío se proporciona antes de actualizar
+                if (estadoDto.CostoEnvio.HasValue)
                 {
                     envio.CostoEnvio = estadoDto.CostoEnvio.Value;
                 }
 
-                // Actualiza el proveedorID del envío
+                // Actualiza el proveedorID del envío si es necesario
                 envio.ProveedorID = estadoDto.ProveedorID;
+
+                // Actualiza la fecha de entrega estimada si se proporciona una
+                if (estadoDto.FechaEntregaEstimada.HasValue)
+                {
+                    envio.FechaEntregaEstimada = estadoDto.FechaEntregaEstimada.Value;
+                }
 
                 _context.Envios.Update(envio);
                 await _context.SaveChangesAsync();
 
-                if (envio.Estado == "Pendiente")
-                {
-                    // Devuelve un código especial, por ejemplo, 202 (Accepted) con un mensaje personalizado
-                    return StatusCode(202, new { message = "El estado del envío ha sido actualizado a 'Pendiente'." });
-                }
-
-                return NoContent(); // Si no es "Pendiente", simplemente confirma que la actualización fue exitosa
+                return NoContent(); // Confirma que la actualización fue exitosa
             }
             catch (Exception ex)
             {
-                // Log the exception details
                 return StatusCode(500, new { message = "An error occurred while processing your request.", details = ex.Message });
             }
         }
 
 
+
         public class ActualizarEstadoEnvioDto
         {
-            public string Estado { get; set; }
-            public decimal? CostoEnvio { get; set; } // El costo de envío como un campo opcional
-            public int ProveedorID { get; set; } // Agrega el ID del proveedor
+            public string? Estado { get; set; }
+            public decimal? CostoEnvio { get; set; }
+            public int? ProveedorID { get; set; } 
+            public DateTime? FechaEntregaEstimada { get; set; }
         }
 
 
