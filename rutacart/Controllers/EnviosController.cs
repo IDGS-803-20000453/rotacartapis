@@ -72,7 +72,7 @@ namespace rutacart.Controllers
             public decimal? CostoEnvio { get; set; }
             public DateTime? FechaEnvio { get; set; }
             public DateTime? FechaEntregaEstimada { get; set; }
-            public string Estado { get; set; }
+            public string? Estado { get; set; }
         }
         // GET: api/Envios
         [HttpGet]
@@ -91,10 +91,10 @@ namespace rutacart.Controllers
                     EnvioID = envio.EnvioID,
                     PedidoID = envio.PedidoID,
                     ProveedorID = envio.ProveedorID,
-                    CostoEnvio = envio.CostoEnvio,
+                    CostoEnvio = envio.CostoEnvio ?? 0,
                     FechaEnvio = envio.FechaEnvio,
                     FechaEntregaEstimada = envio.FechaEntregaEstimada,
-                    Estado = envio.Estado
+                    Estado = envio.Estado ?? "Desconocido"
                 })
                 .ToListAsync();
 
