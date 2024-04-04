@@ -396,6 +396,7 @@ namespace rutacart.Controllers
                 EstadoEnvio = result.IsDBNull(result.GetOrdinal("EstadoEnvio")) ? null : result.GetString(result.GetOrdinal("EstadoEnvio")),
                 FechaEntregaEstimada = result.IsDBNull(result.GetOrdinal("FechaEntregaEstimada")) ? null : result.GetDateTime(result.GetOrdinal("FechaEntregaEstimada")),
                 CostoEnvio = result.IsDBNull(result.GetOrdinal("CostoEnvio")) ? null : result.GetDecimal(result.GetOrdinal("CostoEnvio")),
+                ProveedorID = result.IsDBNull(result.GetOrdinal("ProveedorID")) ? null : result.GetInt32(result.GetOrdinal("ProveedorID")),
                 NombreProducto = result.IsDBNull(result.GetOrdinal("NombreProducto")) ? null : result.GetString(result.GetOrdinal("NombreProducto")),
                 ImagenURL = result.IsDBNull(result.GetOrdinal("ImagenURL")) ? null : result.GetString(result.GetOrdinal("ImagenURL")),
                 Cantidad = result.IsDBNull(result.GetOrdinal("Cantidad")) ? null : result.GetInt32(result.GetOrdinal("Cantidad")),
@@ -432,6 +433,7 @@ namespace rutacart.Controllers
             public string? EstadoEnvio { get; set; }
             public DateTime? FechaEntregaEstimada { get; set; }
             public decimal? CostoEnvio { get; set; }
+            public int? ProveedorID { get; set; }
             public string? NombreProducto { get; set; }
             public string? ImagenURL { get; set; }
             public int? Cantidad { get; set; }
