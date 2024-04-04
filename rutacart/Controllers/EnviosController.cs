@@ -32,6 +32,10 @@ namespace rutacart.Controllers
                 {
                     envio.CostoEnvio = estadoDto.CostoEnvio.Value;
                 }
+
+                // Actualiza el proveedorID del envío
+                envio.ProveedorID = estadoDto.ProveedorID;
+
                 _context.Envios.Update(envio);
                 await _context.SaveChangesAsync();
 
@@ -50,11 +54,14 @@ namespace rutacart.Controllers
             }
         }
 
+
         public class ActualizarEstadoEnvioDto
         {
             public string Estado { get; set; }
-            public decimal? CostoEnvio { get; set; } // Agrega el costo de envío como un campo opcional
+            public decimal? CostoEnvio { get; set; } // El costo de envío como un campo opcional
+            public int ProveedorID { get; set; } // Agrega el ID del proveedor
         }
+
 
         public class EnvioDto
         {
